@@ -1,111 +1,106 @@
-Multithreaded Grep-like Utility in C++ (No )
+# Multithreaded Grep-like Utility in C++
 
-Overview
+## Overview
 
-This project is a C++ implementation of a grep-like command-line utility. It recursively searches for a given query string in all files under a specified directory. The tool uses POSIX directory traversal functions (opendir, readdir) to avoid C++17's <filesystem>. To speed up the search, the implementation uses multithreading with a thread pool to utilize all CPU cores.
+This project is a C++ implementation of a grep-like command-line utility. It recursively searches for a given query string in all files under a specified directory. To speed up the search, the implementation uses multithreading with a thread pool to utilize all CPU cores.
 
-Features
 
-Recursive directory traversal
+## Features
 
-String matching in regular files
+- **Multithreaded**: Utilizes all CPU cores using a thread pool.
+- **Testable**: Abstracted file system interaction allows mocking and unit testing.
+- **Modular**: Clean separation between components (I/O, threading, logic).
+- **Cross-platform**: Uses standard C++17 and STL only.
 
-Multithreaded file processing
+## Software Design
 
-Fast and scalable (parallel file reading and searching)
+### 1. **SearchEngine**
 
-Outputs matched lines to the console
+- Orchestrates the search operation.
+- Accepts a `FileHandler` and a number of threads.
+- Submits file search jobs to the thread pool.
+- Avoids direct file system access for better testability.
 
-Usage
+```cpp
+SearchEngine engine(file_handler, std::thread::hardware_concurrency());
+engine.search("query", "directory");
+```
 
-./grep_utility <query_string> <directory_path>
+### 2. **FileHandler (Interface)**
 
-Example
+- Abstract class defining the API for file operations:
+  - Listing files recursively.
+  - Reading a file’s contents line by line.
 
-./grep_utility TODO ./my_project
+- Two implementations:
+  - `RealFileHandler` for actual filesystem usage.
+  - `MockFileHandler` for testing with in-memory data.
 
-Design
+### 3. **ThreadPool**
 
-Components
+- Manages a fixed number of worker threads.
+- Accepts jobs using `enqueue()`.
+- Gracefully shuts down on destruction.
 
-Directory Walker
+### 4. **MockFileHandler**
 
-Uses opendir() and readdir() to recursively traverse a directory tree.
+- Used in tests to simulate file contents.
+- Enables fast and deterministic unit tests without real file access.
 
-Filters out . and .., skips symbolic links.
+```cpp
+mock_handler->file_contents = {
+    { "file1.txt", { "line1", "line2", "search here" } },
+    { "file2.txt", { "nothing", "to", "see" } }
+};
+```
 
-Work Queue
+---
 
-A thread-safe queue of file paths to be searched.
+## Directory Structure
 
-Thread Pool
+```
+.
+├── include/
+│   ├── FileHandler.hpp
+│   ├── SearchEngine.hpp
+│   └── ThreadPool.hpp
+├── src/
+│   ├── FileHandler.cpp
+│   ├── SearchEngine.cpp
+│   ├── ThreadPool.cpp
+│   └── main.cpp
+├── tests/
+│   ├── test_search.cpp
+│   └── mock_filehandler.hpp
+├── CMakeLists.txt
+└── README.md
+```
 
-A fixed number of worker threads equal to hardware concurrency.
+---
+## Outputs matched lines to the console
 
-Each thread dequeues a file path and searches for the query string.
+### Usage
 
-Searcher
+./search_utility <query_string> <directory_path>
 
-Reads each file line-by-line using std::ifstream.
+### Example
 
-Prints matching lines to the console along with the file path and line number.
+./search_utility TODO ./my_project
 
-Threading Model
+## Build & Run
 
-The main thread performs directory traversal.
+### Prerequisites
 
-Worker threads consume files from the queue and search them in parallel.
+- C++17-compatible compiler (GCC, Clang, MSVC)
+- CMake ≥ 3.14
+- Git (for cloning dependencies)
 
-Synchronization
+### Build Instructions
 
-A std::mutex protects shared resources (queue, output).
-
-std::condition_variable handles waiting when the queue is empty.
-
-Error Handling
-
-Skips unreadable files and outputs a warning.
-
-Ignores symbolic links and directories.
-
-Limitations
-
-Only supports basic string matching (no regex).
-
-Does not handle binary files specially.
-
-Assumes UTF-8 encoded text files.
-
-Tests
-
-Test Plan
-
-Create a test directory tree:
-
-Contains text files with and without the query string
-
-Includes subdirectories, symbolic links, and non-readable files
-
-Run the utility and verify console output manually or via redirection.
-
-Example Test
-
-mkdir -p testdir/subdir
-echo "TODO: implement function" > testdir/file1.txt
-echo "nothing here" > testdir/file2.txt
-echo "TODO: add unit test" > testdir/subdir/file3.txt
-./grep_utility TODO testdir
-
-Expected Output:
-
-testdir/file1.txt:1: TODO: implement function
-testdir/subdir/file3.txt:1: TODO: add unit test
-
-Build
-
-g++ -std=c++17 -pthread grep_utility.cpp -o grep_utility
-
-Conclusion
-
-This project demonstrates a performant, multithreaded text search utility using low-level POSIX directory functions and modern C++ concurrency tools. It's designed to be fast, simple, and compatible with systems that do not support <filesystem>.
+```bash
+git clone <your-repo-url>
+cd MultithreadedSearchUtility
+mkdir build && cd build
+cmake ..
+make
 
