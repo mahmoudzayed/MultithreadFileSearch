@@ -1,3 +1,6 @@
+#include <vector>
+#include <string>
+
 class FileHandler {
 public:
     virtual std::vector<std::string> list_files_recursively(const std::string& directory) = 0;
